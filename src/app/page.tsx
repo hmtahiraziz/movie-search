@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, Suspense } from 'react';
+import { useMemo, useCallback, Suspense, useState } from 'react';
 import { useSearchMovies, useAddToFavorites, useRemoveFromFavorites } from '@/hooks/useMovies';
 import { useSearchState } from '@/hooks/useSearchState';
 import { Movie } from '@/types/movie';
@@ -21,6 +21,7 @@ function SearchPageContent() {
   const { data: searchResults, isLoading, error } = useSearchMovies(searchQuery, currentPage, searchEnabled);
   const addToFavorites = useAddToFavorites();
   const removeFromFavorites = useRemoveFromFavorites();
+  const [mutatingMovieId, setMutatingMovieId] = useState<string | null>(null);
 
   const totalPages = useMemo(() => {
     if (!searchResults?.data.totalResults) return 0;
@@ -32,10 +33,11 @@ function SearchPageContent() {
   }, [setQuery]);
 
   const handleToggleFavorite = async (movie: Movie) => {
-    if (addToFavorites.isPending || removeFromFavorites.isPending) {
+    if (mutatingMovieId) {
       return;
     }
 
+    setMutatingMovieId(movie.imdbID);
     try {
       if (movie.isFavorite) {
         await removeFromFavorites.mutateAsync(movie.imdbID);
@@ -44,6 +46,8 @@ function SearchPageContent() {
       }
     } catch (error) {
       console.error('Failed to toggle favorite:', error);
+    } finally {
+      setMutatingMovieId(null);
     }
   };
 
@@ -55,8 +59,6 @@ function SearchPageContent() {
       }
     }
   }, [setPage, totalPages]);
-
-  const isMutating = addToFavorites.isPending || removeFromFavorites.isPending;
 
   return (
     <div className="min-h-screen bg-gradient-hero">
@@ -99,7 +101,7 @@ function SearchPageContent() {
                     movie={movie}
                     isFavorite={movie.isFavorite ?? false}
                     onToggleFavorite={handleToggleFavorite}
-                    isMutating={isMutating}
+                    isMutating={mutatingMovieId === movie.imdbID}
                   />
                 ))}
               </div>

@@ -17,11 +17,17 @@ const Favorites = () => {
   
   const addToFavorites = useAddToFavorites();
   const removeFromFavorites = useRemoveFromFavorites();
+  const [mutatingMovieId, setMutatingMovieId] = useState<string | null>(null);
   
   // On the favorites page, all movies are favorites, so remove,
   // but also support add in case this is reused in a context where movies might not be favorites
   const handleToggleFavorite = async (movie: Movie) => {
+    if (mutatingMovieId) {
+      return;
+    }
+
     const isFavorite = favorites?.data.favorites.some(fav => fav.imdbID === movie.imdbID) ?? false;
+    setMutatingMovieId(movie.imdbID);
     try {
       if (isFavorite) {
         await removeFromFavorites.mutateAsync(movie.imdbID);
@@ -35,6 +41,8 @@ const Favorites = () => {
       }
     } catch (error) {
       console.error(isFavorite ? 'Failed to remove from favorites:' : 'Failed to add to favorites:', error);
+    } finally {
+      setMutatingMovieId(null);
     }
   };
 
@@ -95,7 +103,7 @@ const Favorites = () => {
                   movie={movie}
                   isFavorite={true}
                   onToggleFavorite={handleToggleFavorite}
-                  isMutating={removeFromFavorites.isPending}
+                  isMutating={mutatingMovieId === movie.imdbID}
                 />
               ))}
             </div>
